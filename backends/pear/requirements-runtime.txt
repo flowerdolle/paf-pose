@@ -1,0 +1,24 @@
+# Runtime dependencies for the PEAR inference path used by adapter.py.
+# Versions pinned in upstream PEAR requirements.txt (commit e1aa1f7) are kept as-is;
+# packages PEAR leaves unpinned are pinned to releases contemporary with torch 2.0.1.
+# torch / torchvision / torchaudio / pytorch3d / chumpy are installed separately in the Dockerfile.
+numpy==1.22.4
+opencv-python-headless==4.9.0.80
+scipy==1.13.1
+omegaconf==2.3.0
+PyYAML==6.0.2
+roma==1.5.2.1
+rich==14.0.0
+huggingface-hub==0.25.1
+pillow==10.4.0
+safetensors==0.5.3
+lightning==2.0.9
+timm==0.9.12
+einops==0.7.0
+tqdm==4.66.4
+plotly==5.18.0
+trimesh==4.0.5
+matplotlib==3.7.5
+colored==2.2.4
+transformers==4.36.2
+onnxruntime==1.16.3

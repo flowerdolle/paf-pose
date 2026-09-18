@@ -1,0 +1,20 @@
+# Builds one image per backend. Run-time invocation is done by `pafpose run`
+# (docker run per video), not by compose; compose exists for `docker compose build`.
+# The build context is the repository root (same as a Portainer/GitHub git build), so every
+# Dockerfile uses paths like backends/_common/pafpose_backend.py.
+services:
+  sam3dbody:
+    image: pafpose/sam3dbody:0.1
+    build: { context: ., dockerfile: backends/sam3dbody/Dockerfile }
+  pear:
+    image: pafpose/pear:0.1
+    build: { context: ., dockerfile: backends/pear/Dockerfile }
+  wilor:
+    image: pafpose/wilor:0.1
+    build: { context: ., dockerfile: backends/wilor/Dockerfile }
+  teaser:
+    image: pafpose/teaser:0.1
+    build: { context: ., dockerfile: backends/teaser/Dockerfile }
+  mediapipe:
+    image: pafpose/mediapipe:0.1
+    build: { context: ., dockerfile: backends/mediapipe/Dockerfile }

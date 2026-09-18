@@ -1,0 +1,4 @@
+# Accuracy-oriented preset (paper Table: best WB PA-MPJPE).
+body: sam3dbody
+hand: sam3dbody
+face: pear

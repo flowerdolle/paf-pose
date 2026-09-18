@@ -1,0 +1,4 @@
+# Speed-oriented preset (single unified model, fastest).
+body: pear
+hand: pear
+face: pear

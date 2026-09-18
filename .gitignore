@@ -1,0 +1,32 @@
+# Local data, weights, and generated results never enter Git.
+weights/
+outputs/
+results/
+runs/
+logs/
+*.npy
+*.npz
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.gif
+*.png
+*.jpg
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+*.safetensors
+*.bin
+*.task
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.env

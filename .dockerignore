@@ -1,0 +1,19 @@
+# Keep the build context small: only backends/ is needed by the Dockerfiles.
+.git
+.venv
+weights
+outputs
+results
+runs
+logs
+**/__pycache__
+*.npz
+*.npy
+*.mp4
+*.pt
+*.pth
+*.ckpt
+docs
+tests
+tools
+pafpose
