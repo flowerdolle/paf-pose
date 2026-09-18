@@ -62,8 +62,6 @@ PART_TO_KEY: dict[str, str] = {
     "face": "face70_xyz",
 }
 
-KEY_TO_PART: dict[str, str] = {v: k for k, v in PART_TO_KEY.items()}
-
 JOINT_COUNT: dict[str, int] = {
     "body8_eye2_xyz": 10,
     "hands42_xyz": 42,

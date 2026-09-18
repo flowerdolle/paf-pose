@@ -39,8 +39,6 @@ HAND21_EDGES = np.asarray(
 LEFT_HAND, RIGHT_HAND = slice(0, 21), slice(21, 42)
 FACE_EYES = [68, 69]  # right eye center, left eye center inside face70
 
-FUSED_KEYS = ("body8_xyz", "eye2_xyz", "hands42_xyz", "face70_xyz", "wholebody120_xyz")
-
 
 @dataclass(frozen=True)
 class FusionConfig:

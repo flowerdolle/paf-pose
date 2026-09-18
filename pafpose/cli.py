@@ -89,7 +89,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 1 if failures else 0
 
 
-# --------------------------------------------------------------------------- fuse / evaluate
+# --------------------------------------------------------------------------- fuse
 
 
 def cmd_fuse(args: argparse.Namespace) -> int:
@@ -125,11 +125,6 @@ def cmd_fuse(args: argparse.Namespace) -> int:
           f"right {int(fused.right_valid.sum())}, face {int(fused.face_valid.sum())})")
     print(f"scales: {fused.scales}")
     return 0
-
-
-def cmd_evaluate(args: argparse.Namespace) -> int:
-    print("pafpose evaluate: not implemented yet (stage 5)", file=sys.stderr)
-    return 2
 
 
 # --------------------------------------------------------------------------- doctor
@@ -238,9 +233,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_fuse.add_argument("--no-hand-scale", action="store_true", help="keep each hand's own scale")
     p_fuse.add_argument("--no-face-scale", action="store_true", help="keep the face's own scale")
     p_fuse.set_defaults(func=cmd_fuse)
-
-    p_eval = sub.add_parser("evaluate", help="evaluate results against ground truth (stage 5)")
-    p_eval.set_defaults(func=cmd_evaluate)
 
     p_doc = sub.add_parser("doctor", help="check docker, GPU, images, weights, registry, presets")
     p_doc.add_argument("--weights", default=None)
