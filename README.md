@@ -23,10 +23,8 @@ pafpose run --video videos/ --preset accuracy --out result/
 6. [입력 규격](#6-입력-규격)
 7. [출력 규격](#7-출력-규격)
 8. [지원 백엔드](#8-지원-백엔드)
-9. [프리셋](#9-프리셋)
-10. [논문 결과 재현 (선택)](#10-논문-결과-재현-선택)
-11. [구조](#11-구조)
-12. [라이선스와 외부 모델](#12-라이선스와-외부-모델)
+9. [구조](#9-구조)
+10. [라이선스와 외부 모델](#10-라이선스와-외부-모델)
 
 ## 1. 개요
 
@@ -189,7 +187,7 @@ pafpose run --video input.mp4 --preset speed --out result/ --dry-run
 | --- | --- |
 | `--video` | `.mp4` 파일 하나 또는 `.mp4`가 들어 있는 폴더 |
 | `--out` | 출력 루트. 영상마다 `<out>/<영상이름>/` 아래에 백엔드별 결과와 로그 생성 |
-| `--preset` | `accuracy` / `balanced` / `speed` 또는 yaml 경로 |
+| `--preset` | `accuracy` (sam3dbody / sam3dbody / pear), `balanced` (pear / wilor / pear), `speed` (pear / pear / pear) 또는 yaml 경로. 순서는 body / hand / face |
 | `--body`, `--hand`, `--face` | 파트별 백엔드 이름. 프리셋보다 우선 |
 | `--weights` | 가중치 루트 (기본 `$PAFPOSE_WEIGHTS` 또는 `./weights`) |
 | `--cpu` | 컨테이너에 GPU를 넘기지 않음 (mediapipe 전용 실행에 사용) |
@@ -262,26 +260,7 @@ pafpose fuse --body-npz result/clip/pear/clip.npz --hand-npz result/clip/wilor/c
 레지스트리: `backends/backends.yaml`. 각 백엔드 폴더의 `README.md`에 어댑터 동작, 가중치 배치, 수동 실행 방법, 제한 사항이 있습니다.
 백엔드 이미지는 `docker compose build`로 빌드하며, 외부 저장소는 Dockerfile 안에서 위 커밋으로 clone 됩니다.
 
-## 9. 프리셋
-
-| 프리셋 | body | hand | face |
-| --- | --- | --- | --- |
-| `accuracy` | sam3dbody | sam3dbody | pear |
-| `balanced` | pear | wilor | pear |
-| `speed` | pear | pear | pear |
-
-## 10. 논문 결과 재현 (선택)
-
-`tools/repro/reproduce_paper_fusion.py`는 이 저장소의 융합·평가 모듈로 논문의 whole-body 융합 표를 다시 계산해
-논문 값과 비교합니다. 논문 실험의 원본 모델 출력과 NIA 수어 데이터셋 GT가 필요하므로 저자 환경에서만 실행할 수 있습니다.
-Ground-truth 기반 평가 명령(`pafpose evaluate`)은 아직 제공되지 않습니다.
-
-```bash
-python tools/repro/reproduce_paper_fusion.py --hand sam     # SAM 3D Body body+hands, PEAR face
-python tools/repro/reproduce_paper_fusion.py --hand wilor   # SAM 3D Body body, WiLoR hands, PEAR face
-```
-
-## 11. 구조
+## 9. 구조
 
 ```text
 pafpose/          호스트 CLI, 백엔드 레지스트리, 컨테이너 실행기, 출력 스키마, 융합, 평가 지표
@@ -294,7 +273,7 @@ tests/            단위 테스트
 docs/             개발 계획
 ```
 
-## 12. 라이선스와 외부 모델
+## 10. 라이선스와 외부 모델
 
 본 저장소의 자체 코드는 `pafpose/`, `backends/` 아래의 어댑터·매핑·헬퍼·Dockerfile·가중치 스크립트,
 `scripts/`, `tools/`, 설정 파일입니다. 외부 모델 코드는 저장소에 포함하지 않으며,
