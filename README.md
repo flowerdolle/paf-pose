@@ -24,13 +24,24 @@ pafpose run --video videos/ --preset accuracy --out result/
 7. [출력 규격](#7-출력-규격)
 8. [지원 백엔드](#8-지원-백엔드)
 9. [프리셋](#9-프리셋)
-10. [평가 (선택)](#10-평가-선택)
+10. [논문 결과 재현 (선택)](#10-논문-결과-재현-선택)
 11. [구조](#11-구조)
 12. [라이선스와 외부 모델](#12-라이선스와-외부-모델)
 
 ## 1. 개요
 
-_TODO (4단계에서 작성)_
+RGB 영상에서 전신 3D 자세를 뽑을 때, body·hand·face는 각각 정확도, 프레임 커버리지, 속도의 균형이 다릅니다.
+PAF-Pose는 파트마다 다른 모델을 고를 수 있게 하고, 그 결과를 하나의 전신 골격으로 합칩니다. 처리 순서는 세 단계입니다.
+
+1. **백엔드 실행.** 선택한 body / hand / face 모델을 각각의 Docker 컨테이너에서 실행합니다. 모델마다 실행 환경이 달라도
+   컨테이너로 격리되므로 한 머신에서 함께 쓸 수 있습니다. 같은 모델이 여러 파트에 선택되면 한 번만 실행됩니다.
+2. **공통 레이아웃 변환.** 각 모델의 고유 관절 순서와 좌표계를 공통 레이아웃(body8 + eye2, hands42, face70)과
+   공통 좌표계로 바꿔 저장합니다. 추정에 실패한 프레임은 NaN과 유효 마스크로 표시합니다.
+3. **파트 인식 융합.** 손은 손목 기준으로, 얼굴은 두 눈 중점 기준으로 body 소스에 붙입니다. 스케일은 영상당 한 번,
+   body 소스의 손 뼈 길이(손)와 눈 사이 거리(얼굴)의 중앙값 비율로 맞춥니다. 회전 정렬, 학습 기반 보정, 시간축 평활은
+   하지 않습니다. 결과는 120관절 전신 시퀀스와 프레임별 유효 마스크입니다.
+
+지원 백엔드는 SAM 3D Body, PEAR, WiLoR, TEASER, MediaPipe이며, 정확도·균형·속도 프리셋 세 가지가 준비되어 있습니다.
 
 ## 2. 요구 환경
 
@@ -41,14 +52,15 @@ _TODO (4단계에서 작성)_
 ## 3. 설치
 
 ```bash
-git clone https://github.com/<org>/paf-pose.git
+git clone https://github.com/flowerdolle/paf-pose.git
 cd paf-pose
 pip install -e .
 docker compose build            # 백엔드 이미지 5개 빌드
 pafpose doctor                  # docker / GPU / 가중치 점검
 ```
 
-모든 Dockerfile은 저장소 루트를 빌드 컨텍스트로 사용합니다.
+첫 빌드는 외부 저장소 clone과 PyTorch 설치가 포함되어 이미지당 수십 분이 걸립니다. 특정 백엔드만 빌드하려면
+`docker compose build mediapipe pear`처럼 이름을 지정합니다. 모든 Dockerfile은 저장소 루트를 빌드 컨텍스트로 사용합니다.
 
 ## 4. 가중치 준비
 
@@ -180,6 +192,7 @@ pafpose run --video input.mp4 --preset speed --out result/ --dry-run
 | `--preset` | `accuracy` / `balanced` / `speed` 또는 yaml 경로 |
 | `--body`, `--hand`, `--face` | 파트별 백엔드 이름. 프리셋보다 우선 |
 | `--weights` | 가중치 루트 (기본 `$PAFPOSE_WEIGHTS` 또는 `./weights`) |
+| `--cpu` | 컨테이너에 GPU를 넘기지 않음 (mediapipe 전용 실행에 사용) |
 | `--dry-run` | docker 명령만 출력 |
 | `--keep-going` | 한 백엔드가 실패해도 나머지 영상을 계속 처리 |
 
@@ -195,8 +208,9 @@ docker, NVIDIA 런타임, 백엔드 이미지, 가중치 폴더, 레지스트리
 
 ## 6. 입력 규격
 
-- 단일 인물이 촬영된 `.mp4` 파일 하나, 또는 `.mp4` 파일들이 들어 있는 폴더
-- 카메라 파라미터는 선택 사항이며, 없으면 각 백엔드의 기본값을 사용
+- 단일 인물이 촬영된 `.mp4` 파일 하나, 또는 `.mp4` 파일들이 들어 있는 폴더 (하위 폴더는 탐색하지 않음)
+- 카메라 파라미터는 입력받지 않으며, 각 백엔드가 자체 기본값으로 추정
+- 프레임 수, 해상도, fps 제한은 없지만 긴 영상은 그만큼 처리 시간이 늘어남
 
 ## 7. 출력 규격
 
@@ -256,12 +270,11 @@ pafpose fuse --body-npz result/clip/pear/clip.npz --hand-npz result/clip/wilor/c
 | `balanced` | pear | wilor | pear |
 | `speed` | pear | pear | pear |
 
-## 10. 평가 (선택)
+## 10. 논문 결과 재현 (선택)
 
-_`pafpose evaluate`는 5단계에서 추가됩니다._
-
-융합·평가 모듈이 논문 표를 그대로 재현하는지 확인하는 스크립트가 `tools/repro/`에 있습니다
-(논문 워크스페이스의 원본 출력과 NIA GT가 필요합니다).
+`tools/repro/reproduce_paper_fusion.py`는 이 저장소의 융합·평가 모듈로 논문의 whole-body 융합 표를 다시 계산해
+논문 값과 비교합니다. 논문 실험의 원본 모델 출력과 NIA 수어 데이터셋 GT가 필요하므로 저자 환경에서만 실행할 수 있습니다.
+Ground-truth 기반 평가 명령(`pafpose evaluate`)은 아직 제공되지 않습니다.
 
 ```bash
 python tools/repro/reproduce_paper_fusion.py --hand sam     # SAM 3D Body body+hands, PEAR face
@@ -271,17 +284,19 @@ python tools/repro/reproduce_paper_fusion.py --hand wilor   # SAM 3D Body body, 
 ## 11. 구조
 
 ```text
-pafpose/     호스트에서 실행되는 CLI, 레지스트리, 컨테이너 실행기, 융합, 평가, 시각화
-backends/    컨테이너 안에서 실행되는 백엔드별 어댑터와 Dockerfile
-configs/     프리셋
-tools/nia/   NIA 데이터셋 GT 변환 (평가 전용)
-tests/       단위 테스트
-docs/        개발 계획과 설계 메모
+pafpose/          호스트 CLI, 백엔드 레지스트리, 컨테이너 실행기, 출력 스키마, 융합, 평가 지표
+backends/         컨테이너 안에서 실행되는 백엔드별 어댑터, 관절 매핑, Dockerfile, 가중치 스크립트
+backends/_common/ 모든 어댑터가 공유하는 영상 읽기·출력 쓰기 헬퍼
+configs/          프리셋
+scripts/          가중치 일괄 다운로드
+tools/repro/      논문 결과 재현 스크립트
+tests/            단위 테스트
+docs/             개발 계획
 ```
 
 ## 12. 라이선스와 외부 모델
 
-본 저장소의 자체 코드는 `pafpose/`, `backends/*/adapter.py`, `backends/*/to_common.py`,
-Dockerfile, 설정 파일입니다. 외부 모델 코드는 저장소에 포함하지 않으며,
+본 저장소의 자체 코드는 `pafpose/`, `backends/` 아래의 어댑터·매핑·헬퍼·Dockerfile·가중치 스크립트,
+`scripts/`, `tools/`, 설정 파일입니다. 외부 모델 코드는 저장소에 포함하지 않으며,
 Docker 이미지 빌드 시 각 공식 저장소의 고정된 커밋을 받아옵니다.
 각 외부 모델과 가중치는 해당 프로젝트의 라이선스를 따릅니다.
