@@ -98,7 +98,7 @@ RUN if [ "${WITH_DETECTOR}" = "1" ]; then \
     fi
 
 # ---------------------------------------------------------------------------------------------
-# PEAR (body + hand + face): Python 3.9, torch 2.0.1 + cu118, pytorch3d v0.7.8 built from source
+# PEAR (body + hand + face): Python 3.9, torch 2.0.1 + cu118, pytorch3d V0.7.8 built from source
 # (backends/pear/Dockerfile). This is the only stage that needs nvcc, hence the devel base.
 # ---------------------------------------------------------------------------------------------
 FROM pybase AS pear
@@ -106,10 +106,11 @@ ENV VENV=/opt/venvs/pear TORCH_CUDA_ARCH_LIST="7.0;7.5;8.0;8.6;8.9" FORCE_CUDA=1
 RUN python3.9 -m venv ${VENV} && ${VENV}/bin/pip install --upgrade pip setuptools wheel \
     && ${VENV}/bin/pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 \
         --index-url https://download.pytorch.org/whl/cu118
-COPY backends/pear/requirements-runtime.txt /tmp/requirements-runtime.txt
-RUN ${VENV}/bin/pip install -r /tmp/requirements-runtime.txt \
-    && ${VENV}/bin/pip install "git+https://github.com/facebookresearch/pytorch3d.git@v0.7.8" --no-build-isolation \
-    && ${VENV}/bin/pip install chumpy==0.70 --no-build-isolation
+COPY backends/pear/requirements-runtime.txt backends/pear/constraints.txt /tmp/
+RUN ${VENV}/bin/pip install -c /tmp/constraints.txt -r /tmp/requirements-runtime.txt \
+    && ${VENV}/bin/pip install -c /tmp/constraints.txt "git+https://github.com/facebookresearch/pytorch3d.git@V0.7.8" --no-build-isolation \
+    && ${VENV}/bin/pip install -c /tmp/constraints.txt chumpy==0.70 --no-build-isolation \
+    && ${VENV}/bin/python -c "import torch, pytorch3d; assert torch.__version__ == '2.0.1+cu118', torch.__version__; print('torch', torch.__version__, 'pytorch3d', pytorch3d.__version__)"
 RUN git clone https://github.com/Pixel-Talk/PEAR.git /opt/pear \
     && cd /opt/pear && git checkout e1aa1f7 && rm -rf .git
 # License-gated files resolve to the /weights mount at run time (dangling until mounted).

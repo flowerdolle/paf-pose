@@ -13,6 +13,7 @@ huggingface-hub==0.25.1
 pillow==10.4.0
 safetensors==0.5.3
 lightning==2.0.9
+pytorch-lightning==2.0.9
 timm==0.9.12
 einops==0.7.0
 tqdm==4.66.4

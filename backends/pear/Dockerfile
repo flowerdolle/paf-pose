@@ -32,10 +32,11 @@ RUN python -m pip install --upgrade pip setuptools wheel \
     && python -m pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 \
         --index-url https://download.pytorch.org/whl/cu118
 
-COPY backends/pear/requirements-runtime.txt /tmp/requirements-runtime.txt
-RUN python -m pip install -r /tmp/requirements-runtime.txt \
-    && python -m pip install "git+https://github.com/facebookresearch/pytorch3d.git@v0.7.8" --no-build-isolation \
-    && python -m pip install chumpy==0.70 --no-build-isolation
+COPY backends/pear/requirements-runtime.txt backends/pear/constraints.txt /tmp/
+RUN python -m pip install -c /tmp/constraints.txt -r /tmp/requirements-runtime.txt \
+    && python -m pip install -c /tmp/constraints.txt "git+https://github.com/facebookresearch/pytorch3d.git@V0.7.8" --no-build-isolation \
+    && python -m pip install -c /tmp/constraints.txt chumpy==0.70 --no-build-isolation \
+    && python -c "import torch, pytorch3d; assert torch.__version__ == '2.0.1+cu118', torch.__version__; print('torch', torch.__version__, 'pytorch3d', pytorch3d.__version__)"
 
 # PEAR source at the pinned commit (assets tracked in git come with it).
 RUN git clone https://github.com/Pixel-Talk/PEAR.git /opt/pear \
