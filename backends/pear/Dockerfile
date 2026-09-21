@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends \
         python3.9 python3.9-dev python3.9-venv python3.9-distutils \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.9 \
+    && curl -sS https://bootstrap.pypa.io/pip/3.9/get-pip.py | python3.9 \
     && ln -sf /usr/bin/python3.9 /usr/local/bin/python && ln -sf /usr/bin/python3.9 /usr/local/bin/python3
 
 # torch 2.0.1 + cu118 exactly as PEAR's requirements.txt pins it.
