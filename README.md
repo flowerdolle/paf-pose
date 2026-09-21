@@ -60,6 +60,31 @@ pafpose doctor                  # docker / GPU / 가중치 점검
 첫 빌드는 외부 저장소 clone과 PyTorch 설치가 포함되어 이미지당 수십 분이 걸립니다. 특정 백엔드만 빌드하려면
 `docker compose build mediapipe pear`처럼 이름을 지정합니다. 모든 Dockerfile은 저장소 루트를 빌드 컨텍스트로 사용합니다.
 
+### 3.1 이미지 하나로 빌드하기
+
+백엔드 5개를 이미지 하나(`pafpose/all:0.1`)에 담을 수도 있습니다. 저장소 루트의 `Dockerfile`이
+백엔드마다 별도 stage에서 자기 Python·torch 버전의 가상환경을 만든 뒤 마지막 stage에 모두 모읍니다.
+버전과 커밋은 `backends/*/Dockerfile`과 동일합니다.
+
+```bash
+docker compose -f docker-compose.single.yml build      # 또는: docker build -t pafpose/all:0.1 .
+export PAFPOSE_REGISTRY=backends/backends-single.yaml   # 호스트 CLI가 이 이미지를 쓰도록
+pafpose doctor
+pafpose run --preset balanced --input clip.mp4 --out results/
+```
+
+컨테이너 안에서는 `pafpose-backend <backend> ...`가 해당 가상환경으로 어댑터를 실행합니다.
+
+```bash
+docker run --rm --gpus all -v $PWD/clip.mp4:/input/clip.mp4:ro -v $PWD/out:/output \
+  -v $PAFPOSE_WEIGHTS/pear:/weights:ro pafpose/all:0.1 \
+  pafpose-backend pear --video /input/clip.mp4 --out /output --weights /weights
+```
+
+이미지 하나는 빌드 명령이 한 번이고 배포가 단순한 대신, 크기가 백엔드 5개의 합(약 15~20 GB)이고
+한 백엔드의 의존성 설치가 실패하면 전체 빌드가 실패합니다. 백엔드를 처음 검증할 때는 개별 이미지가
+실패를 찾기 쉽고, 검증이 끝난 뒤 배포용으로 단일 이미지를 쓰는 순서를 권합니다.
+
 ## 4. 가중치 준비
 
 PAF-Pose는 모델 가중치를 배포하지 않습니다. Docker 이미지에는 코드만 들어 있고, 모든 체크포인트는 사용자의 머신에 있는 폴더를 컨테이너의 `/weights`로 읽기 전용 마운트해서 씁니다. 아래에 백엔드마다 필요한 파일, 받는 곳, 놓을 위치를 정리했습니다.
@@ -259,6 +284,7 @@ pafpose fuse --body-npz result/clip/pear/clip.npz --hand-npz result/clip/wilor/c
 
 레지스트리: `backends/backends.yaml`. 각 백엔드 폴더의 `README.md`에 어댑터 동작, 가중치 배치, 수동 실행 방법, 제한 사항이 있습니다.
 백엔드 이미지는 `docker compose build`로 빌드하며, 외부 저장소는 Dockerfile 안에서 위 커밋으로 clone 됩니다.
+단일 이미지 레지스트리는 `backends/backends-single.yaml`, 빌드는 3.1절을 참고하세요.
 
 ## 9. 구조
 
@@ -266,6 +292,8 @@ pafpose fuse --body-npz result/clip/pear/clip.npz --hand-npz result/clip/wilor/c
 pafpose/          호스트 CLI, 백엔드 레지스트리, 컨테이너 실행기, 출력 스키마, 융합, 평가 지표
 backends/         컨테이너 안에서 실행되는 백엔드별 어댑터, 관절 매핑, Dockerfile, 가중치 스크립트
 backends/_common/ 모든 어댑터가 공유하는 영상 읽기·출력 쓰기 헬퍼
+backends/_single/ 단일 이미지 안에서 백엔드를 고르는 dispatcher (`pafpose-backend`)
+Dockerfile         백엔드 5개를 담은 단일 이미지 (3.1절)
 configs/          프리셋
 scripts/          가중치 일괄 다운로드
 tools/repro/      논문 결과 재현 스크립트

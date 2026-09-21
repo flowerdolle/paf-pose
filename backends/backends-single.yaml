@@ -1,0 +1,86 @@
+# Backend registry for the all-in-one image built from the repository-root Dockerfile.
+# Identical to backends.yaml except that every backend runs in pafpose/all:0.1 through the
+# `pafpose-backend <name>` dispatcher. Select it with PAFPOSE_REGISTRY=backends/backends-single.yaml.
+#
+#   parts      which parts this backend can produce (body / hand / face)
+#   image      the all-in-one image tag (same for every backend)
+#   gpu        whether --gpus all is required
+#   upstream   external repository pinned at build time (never vendored here)
+#   weights    files the user must place under $PAFPOSE_WEIGHTS/<backend>/
+#   command    executed inside the container; {video} {out} {weights} are substituted
+#
+# Mounts are fixed for every backend:
+#   {video}   -> /input/<file>.mp4   (read-only)
+#   {out}     -> /output             (adapter writes <stem>.npz and <stem>.meta.json)
+#   {weights} -> /weights            (read-only)
+
+version: 1
+
+backends:
+
+  sam3dbody:
+    display_name: "SAM 3D Body (via SAM-Body4D, frame-wise)"
+    parts: [body, hand]
+    image: pafpose/all:0.1
+    gpu: true
+    upstream:
+      repo: https://github.com/gaomingqi/sam-body4d.git
+      commit: 21af102
+    weights:                    # $PAFPOSE_WEIGHTS/sam3dbody/ ; see backends/sam3dbody/README.md
+      - sam-3d-body-dinov3/model.ckpt          # gated: facebook/sam-3d-body-dinov3 (Hugging Face)
+      - sam-3d-body-dinov3/model_config.yaml   # gated
+      - sam-3d-body-dinov3/assets/mhr_model.pt # gated
+      - moge-2-vitl-normal/model.pt            # public: Ruicheng/moge-2-vitl-normal
+      # optional: vitdet/model_final_f05665.pkl (only for --bbox-mode detector)
+    command: "pafpose-backend sam3dbody --video {video} --out {out} --weights {weights}"
+
+  pear:
+    display_name: "PEAR"
+    parts: [body, hand, face]
+    image: pafpose/all:0.1
+    gpu: true
+    upstream:
+      repo: https://github.com/Pixel-Talk/PEAR.git
+      commit: e1aa1f7
+    weights:                    # $PAFPOSE_WEIGHTS/pear/ ; see backends/pear/README.md
+      - pear/ehm_model_stage1.pt        # public: BestWJH/PEAR_models (Hugging Face)
+      - smplx/SMPLX_NEUTRAL_2020.npz    # SMPL-X license, manual download
+      - flame/generic_model.pkl         # FLAME 2020 license, manual download
+    command: "pafpose-backend pear --video {video} --out {out} --weights {weights}"
+
+  wilor:
+    display_name: "WiLoR"
+    parts: [hand]
+    image: pafpose/all:0.1
+    gpu: true
+    upstream:                   # the paper ran WiLoR through the WiLoR-mini packaging, not the official repo
+      repo: https://github.com/warmshao/WiLoR-mini.git
+      commit: ebec42f
+    weights:                    # $PAFPOSE_WEIGHTS/wilor/ ; see backends/wilor/README.md
+      - pretrained_models/wilor_final.ckpt     # public: warmshao/WiLoR-mini (Hugging Face)
+      - pretrained_models/detector.pt          # public
+      - pretrained_models/mano_mean_params.npz # public
+      - pretrained_models/MANO_RIGHT.pkl       # MANO license, manual download
+    command: "pafpose-backend wilor --video {video} --out {out} --weights {weights}"
+
+  teaser:
+    display_name: "TEASER"
+    parts: [face]
+    image: pafpose/all:0.1
+    gpu: true
+    upstream:
+      repo: https://github.com/Pixel-Talk/TEASER.git
+      commit: c235716
+    weights:                    # $PAFPOSE_WEIGHTS/teaser/ ; see backends/teaser/README.md
+      - TEASER.pt                       # public (Google Drive, see download_weights.sh)
+      - FLAME2020/generic_model.pkl     # FLAME 2020 license, manual download
+    command: "pafpose-backend teaser --video {video} --out {out} --weights {weights}"
+
+  mediapipe:
+    display_name: "MediaPipe Holistic (CPU fallback)"
+    parts: [body, hand, face]
+    image: pafpose/all:0.1
+    gpu: false
+    upstream: null              # pip package, version pinned in Dockerfile
+    weights: []                 # .task models are fetched inside the image at build time
+    command: "pafpose-backend mediapipe --video {video} --out {out}"

@@ -53,3 +53,20 @@ def test_invalid_registry_reports_missing_placeholder(tmp_path: Path):
     )
     with pytest.raises(reg.RegistryError, match="lacks placeholder"):
         reg.Registry.load(bad)
+
+
+def test_single_image_registry_mirrors_the_bundled_one():
+    """backends-single.yaml runs every backend inside pafpose/all:0.1 via the dispatcher."""
+    bundled = reg.Registry.load()
+    single = reg.Registry.load(reg.REPO_ROOT / "backends" / "backends-single.yaml")
+    assert set(single.names()) == set(bundled.names()) == FIRST_CLASS
+    for name in single.names():
+        one, many = single.get(name), bundled.get(name)
+        assert one.image == "pafpose/all:0.1"
+        assert one.command.startswith(f"pafpose-backend {name} ")
+        assert one.command.split(" ", 2)[2] == many.command.split(" ", 2)[2]
+        assert (one.parts, one.gpu, one.weights, one.upstream) == (
+            many.parts, many.gpu, many.weights, many.upstream
+        )
+    for preset in reg.list_presets():
+        single.resolve(preset=preset)

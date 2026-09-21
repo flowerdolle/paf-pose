@@ -126,3 +126,19 @@ def test_run_backend_reads_and_validates_output(registry, tmp_path: Path, monkey
     assert result.ok, result.problems
     assert result.output is not None and result.output.num_frames == 4
     assert result.log_path is not None and result.log_path.is_file()
+
+
+def test_docker_command_single_image_dispatches_by_backend(tmp_path: Path):
+    single = reg.Registry.load(reg.REPO_ROOT / "backends" / "backends-single.yaml")
+    video = _touch_video(tmp_path)
+    spec = runner.RunSpec(
+        backend=single.get("pear"),
+        video=video,
+        out_dir=tmp_path / "out" / "pear",
+        weights_root=tmp_path / "weights",
+        parts=("body", "hand", "face"),
+    )
+    argv = runner.build_docker_command(spec)
+    image = argv.index("pafpose/all:0.1")
+    assert argv[image + 1 : image + 3] == ["pafpose-backend", "pear"]
+    assert argv[-6:] == ["--video", "/input/clip.mp4", "--out", "/output", "--weights", "/weights"]
