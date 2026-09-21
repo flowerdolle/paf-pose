@@ -8,7 +8,7 @@ BACKENDS="sam3dbody pear wilor teaser mediapipe"
 usage() {
     echo "usage: pafpose-backend <backend> [adapter arguments...]" >&2
     echo "backends: ${BACKENDS}" >&2
-    echo "example:  pafpose-backend pear --video /input/clip.mp4 --out /output --weights /weights/pear" >&2
+    echo "example:  pafpose-backend pear --video /input/clip.mp4 --out /output --weights /weights   (host mounts weights/pear at /weights)" >&2
 }
 backend="${1:-}"
 case "${backend}" in

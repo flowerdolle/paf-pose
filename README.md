@@ -70,7 +70,7 @@ pafpose doctor                  # docker / GPU / 가중치 점검
 docker compose -f docker-compose.single.yml build      # 또는: docker build -t pafpose/all:0.1 .
 export PAFPOSE_REGISTRY=backends/backends-single.yaml   # 호스트 CLI가 이 이미지를 쓰도록
 pafpose doctor
-pafpose run --preset balanced --input clip.mp4 --out results/
+pafpose run --video clip.mp4 --preset balanced --out results/
 ```
 
 컨테이너 안에서는 `pafpose-backend <backend> ...`가 해당 가상환경으로 어댑터를 실행합니다.
