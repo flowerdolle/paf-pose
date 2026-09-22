@@ -11,21 +11,21 @@ ROOT="${1:?usage: download_weights.sh <weights-root>}"
 DEST="$ROOT/pear"
 mkdir -p "$DEST/pear" "$DEST/smplx" "$DEST/flame"
 
-CKPT="$DEST/pear/ehm_model_stage1.pt"
+CKPT="$DEST/pear/pear_model.pt"
 if [ -f "$CKPT" ]; then
   echo "[pear] checkpoint already present: $CKPT"
 else
-  echo "[pear] downloading BestWJH/PEAR_models/ehm_model_stage1.pt from Hugging Face ..."
+  echo "[pear] downloading BestWJH/PEAR_models/pear_model.pt from Hugging Face (2.7 GB) ..."
   if command -v python3 >/dev/null 2>&1 && python3 -c "import huggingface_hub" 2>/dev/null; then
     python3 - "$CKPT" <<'PY'
 import shutil, sys
 from huggingface_hub import hf_hub_download
-path = hf_hub_download(repo_id="BestWJH/PEAR_models", filename="ehm_model_stage1.pt", repo_type="model")
+path = hf_hub_download(repo_id="BestWJH/PEAR_models", filename="pear_model.pt", repo_type="model")
 shutil.copyfile(path, sys.argv[1])
 print("saved", sys.argv[1])
 PY
   else
-    curl -L --fail -o "$CKPT" "https://huggingface.co/BestWJH/PEAR_models/resolve/main/ehm_model_stage1.pt"
+    curl -L --fail -o "$CKPT" "https://huggingface.co/BestWJH/PEAR_models/resolve/main/pear_model.pt"
   fi
 fi
 

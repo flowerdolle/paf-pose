@@ -18,7 +18,7 @@ Mounted read-only at `/weights` (host: `$PAFPOSE_WEIGHTS/pear/`):
 
 ```text
 pear/
-├── pear/ehm_model_stage1.pt        Hugging Face BestWJH/PEAR_models (public, auto-download)
+├── pear/pear_model.pt        Hugging Face BestWJH/PEAR_models (public, auto-download)
 ├── smplx/SMPLX_NEUTRAL_2020.npz    SMPL-X v1.1, https://smpl-x.is.tue.mpg.de/ (license required)
 └── flame/generic_model.pkl         FLAME 2020,  https://flame.is.tue.mpg.de/  (license required)
 ```

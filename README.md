@@ -107,7 +107,7 @@ weights/
 │   ├── sam-3d-body-dinov3/assets/mhr_model.pt
 │   └── moge-2-vitl-normal/model.pt
 ├── pear/
-│   ├── pear/ehm_model_stage1.pt
+│   ├── pear/pear_model.pt
 │   ├── smplx/SMPLX_NEUTRAL_2020.npz
 │   └── flame/generic_model.pkl
 ├── wilor/

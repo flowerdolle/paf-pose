@@ -41,7 +41,7 @@ backends:
       repo: https://github.com/Pixel-Talk/PEAR.git
       commit: e1aa1f7
     weights:                    # $PAFPOSE_WEIGHTS/pear/ ; see backends/pear/README.md
-      - pear/ehm_model_stage1.pt        # public: BestWJH/PEAR_models (Hugging Face)
+      - pear/pear_model.pt              # public: BestWJH/PEAR_models (Hugging Face); paper runs used the earlier name ehm_model_stage1.pt
       - smplx/SMPLX_NEUTRAL_2020.npz    # SMPL-X license, manual download
       - flame/generic_model.pkl         # FLAME 2020 license, manual download
     command: "python /app/adapter.py --video {video} --out {out} --weights {weights}"

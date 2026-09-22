@@ -35,7 +35,8 @@ import to_common  # noqa: E402
 BACKEND = "pear"
 UPSTREAM_COMMIT = "e1aa1f7"
 DEFAULT_PEAR_ROOT = Path(os.environ.get("PEAR_ROOT", "/opt/pear"))
-CHECKPOINT_RELATIVE = Path("pear") / "ehm_model_stage1.pt"
+CHECKPOINT_RELATIVE = Path("pear") / "pear_model.pt"          # name on Hugging Face since 2026-09
+CHECKPOINT_LEGACY = Path("pear") / "ehm_model_stage1.pt"      # name used by the paper runs
 INPUT_SIZE = 256
 SMOOTH_WINDOW_BODY = 7
 SMOOTH_WINDOW_FACE = 5
@@ -48,7 +49,7 @@ FLAME_FIELDS = ("eye_pose_params", "pose_params", "jaw_params", "eyelid_params",
 def parse_args():
     parser = pb.base_parser("PEAR body + hands + face adapter for PAF-Pose")
     parser.add_argument("--pear-root", type=Path, default=DEFAULT_PEAR_ROOT, help="PEAR repository root (assets/, configs/, models/)")
-    parser.add_argument("--checkpoint", type=Path, default=None, help="EHM checkpoint; default <weights>/pear/ehm_model_stage1.pt")
+    parser.add_argument("--checkpoint", type=Path, default=None, help="EHM checkpoint; default <weights>/pear/pear_model.pt (or the legacy ehm_model_stage1.pt)")
     parser.add_argument("--no-smooth", action="store_true", help="disable the temporal Savitzky-Golay smoothing PEAR applies")
     parser.add_argument("--legacy-face-frame", action="store_true", help="leave face70 in PEAR's raw frame (paper export behaviour)")
     parser.add_argument("--save-raw", action="store_true", help="also store raw_smplx145_xyz / raw_openpose67_xyz / raw_cameras")
@@ -118,6 +119,8 @@ def main() -> int:
 
     device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
     checkpoint = args.checkpoint or (args.weights / CHECKPOINT_RELATIVE)
+    if args.checkpoint is None and not checkpoint.is_file() and (args.weights / CHECKPOINT_LEGACY).is_file():
+        checkpoint = args.weights / CHECKPOINT_LEGACY
     stem = args.video.stem
     timer = pb.Timer()
 
