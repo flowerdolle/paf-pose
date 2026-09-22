@@ -48,6 +48,8 @@ RUN rm -rf /opt/teaser/assets/FLAME2020 && ln -s /weights/FLAME2020 /opt/teaser/
     && mkdir -p /opt/teaser/pretrained_models && ln -s /weights/TEASER.pt /opt/teaser/pretrained_models/TEASER.pt \
     && chmod -R a+rX /opt/teaser /opt/cache
 
+# Static ffmpeg for frame decoding (see pafpose_backend.VideoReader).
+RUN pip install --no-cache-dir imageio-ffmpeg==0.6.0
 COPY backends/_common/pafpose_backend.py /app/pafpose_backend.py
 COPY backends/teaser/adapter.py backends/teaser/to_common.py /app/
 RUN chmod -R a+rX /app && mkdir -p /output /tmp/mpl && chmod 1777 /output /tmp/mpl

@@ -46,6 +46,8 @@ RUN pip install \
     && python -c "import wilor_mini, ultralytics, smplx, chumpy, dill; print('wilor_mini ok')"
 
 WORKDIR /app
+# Static ffmpeg for frame decoding (see pafpose_backend.VideoReader).
+RUN pip install --no-cache-dir imageio-ffmpeg==0.6.0
 COPY backends/_common/pafpose_backend.py /app/pafpose_backend.py
 COPY backends/wilor/adapter.py backends/wilor/to_common.py /app/
 

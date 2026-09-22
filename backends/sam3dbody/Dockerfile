@@ -48,6 +48,8 @@ RUN if [ "${WITH_DETECTOR}" = "1" ]; then \
             "git+https://github.com/facebookresearch/detectron2.git@a1ce2f956a1d2212ad672e3c47d53405c2fe4312"; \
     fi
 
+# Static ffmpeg for frame decoding (see pafpose_backend.VideoReader).
+RUN pip install --no-cache-dir imageio-ffmpeg==0.6.0
 COPY backends/_common/pafpose_backend.py /app/pafpose_backend.py
 COPY backends/sam3dbody/adapter.py backends/sam3dbody/to_common.py /app/
 

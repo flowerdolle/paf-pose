@@ -211,6 +211,11 @@ COPY --from=teaser    /opt/cache           /opt/cache
 COPY --from=mediapipe /opt/venvs/mediapipe /opt/venvs/mediapipe
 COPY --from=mediapipe /opt/mediapipe       /opt/mediapipe
 
+# Static ffmpeg for frame decoding in every venv (see pafpose_backend.VideoReader).
+RUN for b in wilor sam3dbody pear teaser mediapipe; do \
+        /opt/venvs/$b/bin/pip install --no-cache-dir imageio-ffmpeg==0.6.0 || exit 1; \
+    done
+
 # Adapters keep their per-backend layout: /app/<backend>/adapter.py finds /app/_common on its own.
 COPY backends/_common/pafpose_backend.py                            /app/_common/pafpose_backend.py
 COPY backends/wilor/adapter.py     backends/wilor/to_common.py       /app/wilor/

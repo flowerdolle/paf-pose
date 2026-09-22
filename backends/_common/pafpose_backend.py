@@ -22,6 +22,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
+import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Iterator
@@ -73,8 +77,24 @@ def finite_frames(points: np.ndarray) -> np.ndarray:
 # --------------------------------------------------------------------------- video
 
 
+def ffmpeg_executable() -> str | None:
+    """Bundled ffmpeg (imageio-ffmpeg) if installed, else a system ffmpeg, else None."""
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:  # noqa: BLE001 - any failure means "not available"
+        return shutil.which("ffmpeg")
+
+
 class VideoReader:
-    """Sequential BGR frame reader with fps / frame count (opencv)."""
+    """Sequential BGR frame reader with fps / frame count.
+
+    Metadata comes from OpenCV. Pixels are decoded by ffmpeg (raw bgr24 over a pipe) when an
+    ffmpeg binary is available, because the FFmpeg bundled in recent opencv-python wheels
+    returns all-black frames for some interlaced-flagged files. Set
+    ``PAFPOSE_VIDEO_DECODER=opencv`` to force OpenCV decoding.
+    """
 
     def __init__(self, path: Path, max_frames: int | None = None):
         import cv2
@@ -89,18 +109,64 @@ class VideoReader:
         reported = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         self.max_frames = max_frames
         self.reported_frames = reported if max_frames is None else min(reported, max_frames)
+        self.decoder = "opencv"
+        self.ffmpeg = None
+        if os.environ.get("PAFPOSE_VIDEO_DECODER", "ffmpeg").lower() != "opencv":
+            self.ffmpeg = ffmpeg_executable()
+            if self.ffmpeg and self.width > 0 and self.height > 0:
+                self.decoder = "ffmpeg"
+                self.cap.release()
 
     def __iter__(self) -> Iterator[tuple[int, np.ndarray]]:
+        if self.decoder == "ffmpeg":
+            yield from self._iter_ffmpeg()
+        else:
+            yield from self._iter_opencv()
+
+    def _iter_opencv(self) -> Iterator[tuple[int, np.ndarray]]:
         index = 0
+        black_frames = 0
         while True:
             if self.max_frames is not None and index >= self.max_frames:
                 break
             ok, frame = self.cap.read()
             if not ok:
                 break
+            if index < 5 and not frame.any():
+                black_frames += 1
             yield index, frame
             index += 1
         self.cap.release()
+        if black_frames >= min(5, index) and index > 0:
+            print(
+                f"warning: OpenCV decoded the first {black_frames} frames of {self.path.name} as black; "
+                "install imageio-ffmpeg (or ffmpeg) so frames are decoded by ffmpeg instead",
+                file=sys.stderr,
+            )
+
+    def _iter_ffmpeg(self) -> Iterator[tuple[int, np.ndarray]]:
+        frame_bytes = self.width * self.height * 3
+        argv = [self.ffmpeg, "-v", "error", "-nostdin", "-i", str(self.path), "-f", "rawvideo", "-pix_fmt", "bgr24"]
+        if self.max_frames is not None:
+            argv += ["-frames:v", str(self.max_frames)]
+        argv.append("-")
+        proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        index = 0
+        try:
+            assert proc.stdout is not None
+            while True:
+                buf = proc.stdout.read(frame_bytes)
+                if len(buf) < frame_bytes:
+                    break
+                yield index, np.frombuffer(buf, dtype=np.uint8).reshape(self.height, self.width, 3).copy()
+                index += 1
+        finally:
+            if proc.stdout is not None:
+                proc.stdout.close()
+            stderr = proc.stderr.read().decode(errors="replace").strip() if proc.stderr is not None else ""
+            proc.wait()
+        if index == 0:
+            raise RuntimeError(f"ffmpeg decoded no frames from {self.path}: {stderr[-500:]}")
 
     def read_all(self) -> list[np.ndarray]:
         return [frame for _, frame in self]

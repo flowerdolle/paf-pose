@@ -49,6 +49,8 @@ RUN mkdir -p /opt/pear/assets/FLAME/FLAME2020 \
     && ln -s /weights/flame/generic_model.pkl      /opt/pear/assets/FLAME/FLAME2020/generic_model.pkl \
     && chmod -R a+rwX /opt/pear /tmp
 
+# Static ffmpeg for frame decoding (see pafpose_backend.VideoReader).
+RUN python -m pip install --no-cache-dir imageio-ffmpeg==0.6.0
 COPY backends/_common/pafpose_backend.py /app/pafpose_backend.py
 COPY backends/pear/adapter.py backends/pear/to_common.py /app/
 

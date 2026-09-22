@@ -66,3 +66,24 @@ def test_write_output_rejects_bad_shapes(pb, tmp_path):
     with pytest.raises(ValueError, match="no part arrays"):
         pb.write_output(tmp_path, "c", backend="x", upstream_commit="a", arrays={"raw_x": np.zeros(1)},
                         fps_source=30, timing={"total_sec": 0, "per_frame_sec": []})
+
+
+def test_video_reader_decodes_frames(pb, tmp_path, monkeypatch):
+    cv2 = pytest.importorskip("cv2")
+    path = tmp_path / "clip.mp4"
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), 10.0, (64, 48))
+    for i in range(8):
+        writer.write(np.full((48, 64, 3), 40 + i * 20, dtype=np.uint8))
+    writer.release()
+
+    reader = pb.VideoReader(path)
+    frames = [f for _, f in reader]
+    assert reader.width == 64 and reader.height == 48 and abs(reader.fps - 10.0) < 0.1
+    assert len(frames) == 8 and frames[0].shape == (48, 64, 3)
+    assert 30 < frames[0].mean() < 50 and frames[-1].mean() > frames[0].mean()
+
+    assert sum(1 for _ in pb.VideoReader(path, max_frames=3)) == 3
+
+    monkeypatch.setenv("PAFPOSE_VIDEO_DECODER", "opencv")
+    reader = pb.VideoReader(path)
+    assert reader.decoder == "opencv" and len([f for _, f in reader]) == 8

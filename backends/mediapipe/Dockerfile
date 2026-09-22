@@ -21,6 +21,8 @@ RUN mkdir -p /app/models && cd /app/models \
     && curl -fsSL -o hand_landmarker.task       https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task \
     && curl -fsSL -o face_landmarker.task       https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 
+# Static ffmpeg for frame decoding (see pafpose_backend.VideoReader).
+RUN pip install --no-cache-dir imageio-ffmpeg==0.6.0
 COPY backends/_common/pafpose_backend.py /app/
 COPY backends/mediapipe/adapter.py backends/mediapipe/to_common.py /app/
 
