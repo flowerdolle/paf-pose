@@ -5,10 +5,10 @@
 | 0 | Repository skeleton, registry draft, README outline | done |
 | 1 | Host CLI: schema validation, registry loader, docker runner, `doctor` | done (2026-09-16; docker execution itself unverified: no docker on dev host) |
 | 2 | Port fusion (GT-free) and metrics from SL_MST; reproduce one paper-table row | done (2026-09-16; two rows reproduced to 0.001 mm via tools/repro) |
-| 3 | Backends, in order: pear, wilor, teaser, sam3dbody, mediapipe | adapters, to_common, Dockerfiles, weight scripts written (2026-09-16); docker build/run still unverified (no docker host yet); mediapipe verified end-to-end on CPU |
-| 4 | Build the five images on a docker host, run the three presets end-to-end on real video, fix what breaks | todo |
-| 5 | Optional: overlay visualization and a ground-truth evaluation command | deferred (not required for registration) |
-| 6 | Clean-machine validation from git clone, README finalization, registration source export | todo |
+| 3 | Backends, in order: pear, wilor, teaser, sam3dbody, mediapipe | done (2026-09-22): all five images build on the user's docker host; fixes needed were get-pip URL, torch constraints + pytorch3d tag (pear), dill (wilor), ffmpeg decoding (all) |
+| 4 | Build the five images on a docker host, run the three presets end-to-end on real video, fix what breaks | done (2026-09-22): speed / balanced / accuracy presets run on a 127-frame KETI clip (pear 20 s, wilor 11 s, sam3dbody 196 s); previews rendered. teaser not yet exercised on the docker host |
+| 5 | Optional: overlay visualization and a ground-truth evaluation command | 3D skeleton preview done (`pafpose visualize`); GT evaluation command deferred |
+| 6 | Clean-machine validation from git clone, README finalization, registration source export | clone-to-run validated on the user's PC (2026-09-22); README finalization and source export remaining |
 
 ## Decisions
 
@@ -21,6 +21,7 @@
 
 ## Open items
 
-- Docker builds for pear (pytorch3d source build), sam3dbody, wilor, teaser are untested.
+- WiLoR's own detector misses hands in about half the frames of the KETI clip (67/127 complete); the paper used SAM 3D Body hand boxes instead. A body-guided crop for WiLoR would raise coverage.
+- The all-in-one image (root Dockerfile) has not been built yet.
 - Paper fusion-table face-frame issue (PEAR/TEASER face exports not in the body frame); reproducible with tools/repro --face-frame corrected.
 - Copyright holder for registration (personal vs. institution).
