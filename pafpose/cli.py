@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shlex
 import shutil
 import subprocess
@@ -278,6 +279,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # OpenCV's ffmpeg backend logs swscaler warnings (interlaced flags, colour space) for many
+    # camera files; they do not affect decoding. Keep only fatal ffmpeg messages unless the user
+    # set the variable themselves.
+    os.environ.setdefault("OPENCV_FFMPEG_LOGLEVEL", "8")
     args = build_parser().parse_args(argv)
     return int(args.func(args))
 
