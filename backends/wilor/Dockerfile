@@ -40,9 +40,10 @@ RUN pip install \
         "roma==1.5.6" \
         "huggingface_hub==1.10.1" \
         "tqdm==4.67.3" \
+        "dill==0.4.1" \
         "chumpy @ git+https://github.com/mattloper/chumpy@${CHUMPY_COMMIT}" \
     && pip install --no-deps /opt/wilor \
-    && python -c "import wilor_mini, ultralytics, smplx, chumpy; print('wilor_mini ok')"
+    && python -c "import wilor_mini, ultralytics, smplx, chumpy, dill; print('wilor_mini ok')"
 
 WORKDIR /app
 COPY backends/_common/pafpose_backend.py /app/pafpose_backend.py

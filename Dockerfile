@@ -61,9 +61,10 @@ RUN ${VENV}/bin/pip install \
         "roma==1.5.6" \
         "huggingface_hub==1.10.1" \
         "tqdm==4.67.3" \
+        "dill==0.4.1" \
         "chumpy @ git+https://github.com/mattloper/chumpy@${CHUMPY_COMMIT}" \
     && ${VENV}/bin/pip install --no-deps /opt/wilor \
-    && ${VENV}/bin/python -c "import wilor_mini, ultralytics, smplx, chumpy; print('wilor_mini ok')"
+    && ${VENV}/bin/python -c "import wilor_mini, ultralytics, smplx, chumpy, dill; print('wilor_mini ok')"
 
 # ---------------------------------------------------------------------------------------------
 # SAM 3D Body via SAM-Body4D (body + hand): Python 3.12, torch 2.5.1 + cu121  (backends/sam3dbody/Dockerfile)
