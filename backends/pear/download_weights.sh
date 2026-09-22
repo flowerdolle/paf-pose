@@ -2,7 +2,7 @@
 # Prepare the /weights layout for the PEAR backend.
 #   backends/pear/download_weights.sh <weights-root>
 # Result:
-#   <weights-root>/pear/pear/ehm_model_stage1.pt      (public, downloaded from Hugging Face)
+#   <weights-root>/pear/pear/pear_model.pt            (public, downloaded from Hugging Face)
 #   <weights-root>/pear/smplx/SMPLX_NEUTRAL_2020.npz  (license-gated, manual)
 #   <weights-root>/pear/flame/generic_model.pkl       (license-gated, manual)
 set -euo pipefail

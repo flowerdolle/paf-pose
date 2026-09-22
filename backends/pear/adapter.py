@@ -92,7 +92,7 @@ def load_pear(pear_root: Path, checkpoint: Path, device):
     if not checkpoint.is_file():
         raise FileNotFoundError(
             f"PEAR checkpoint not found: {checkpoint}\n"
-            "Run backends/pear/download_weights.sh <weights-root> (HF BestWJH/PEAR_models/ehm_model_stage1.pt)."
+            "Run backends/pear/download_weights.sh <weights-root> (HF BestWJH/PEAR_models/pear_model.pt)."
         )
     # PEAR resolves assets/ and configs/ relative to the working directory.
     os.chdir(pear_root)
