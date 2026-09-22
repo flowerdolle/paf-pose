@@ -43,22 +43,25 @@ PAF-Pose는 파트마다 다른 모델을 고를 수 있게 하고, 그 결과�
 
 ## 2. 요구 환경
 
-- Linux x86_64, NVIDIA GPU (검증 환경: A40, driver 535)
+- Linux x86_64, NVIDIA GPU (드라이버 525 이상. A40 / 드라이버 535에서 검증)
 - Docker 24+ 와 NVIDIA Container Toolkit
 - Python 3.10+ (호스트 CLI 전용, GPU 라이브러리 불필요)
+- 디스크: 백엔드 이미지 합계 수십 GB, 가중치 약 10 GB
 
 ## 3. 설치
 
 ```bash
 git clone https://github.com/flowerdolle/paf-pose.git
 cd paf-pose
-pip install -e .
+python3 -m venv .venv && source .venv/bin/activate
+python -m pip install -e .
 docker compose build            # 백엔드 이미지 5개 빌드
 pafpose doctor                  # docker / GPU / 가중치 점검
 ```
 
-첫 빌드는 외부 저장소 clone과 PyTorch 설치가 포함되어 이미지당 수십 분이 걸립니다. 특정 백엔드만 빌드하려면
-`docker compose build mediapipe pear`처럼 이름을 지정합니다. 모든 Dockerfile은 저장소 루트를 빌드 컨텍스트로 사용합니다.
+첫 빌드는 외부 저장소 clone과 PyTorch 설치가 포함되어 이미지당 수 분에서 수십 분이 걸립니다.
+한 번에 하나씩 확인하며 빌드하려면 가벼운 순서대로 `docker compose build mediapipe`, `wilor`, `teaser`, `sam3dbody`, `pear`를
+차례로 실행합니다. PEAR는 pytorch3d를 소스에서 컴파일하므로 가장 오래 걸립니다. 모든 Dockerfile은 저장소 루트를 빌드 컨텍스트로 사용합니다.
 
 ## 4. 가중치 준비
 
@@ -101,7 +104,7 @@ weights/
 ### 4.2 공개 파일 자동 다운로드
 
 ```bash
-pip install huggingface_hub gdown        # 스크립트가 쓰는 도구
+python -m pip install huggingface_hub gdown   # 스크립트가 쓰는 도구
 scripts/download_weights.sh weights      # 또는 scripts/download_weights.sh "$PAFPOSE_WEIGHTS"
 ```
 
@@ -115,7 +118,7 @@ scripts/download_weights.sh weights      # 또는 scripts/download_weights.sh "$
 
 1. Hugging Face에 로그인한 뒤 https://huggingface.co/facebook/sam-3d-body-dinov3 를 엽니다.
 2. **Agree and access repository**를 눌러 Meta 라이선스에 동의합니다.
-3. 사용 중인 머신에서 `huggingface-cli login`을 실행하거나 `export HF_TOKEN=hf_...`를 설정합니다.
+3. 사용 중인 머신에서 `hf auth login`(구버전은 `huggingface-cli login`)을 실행하거나 `export HF_TOKEN=hf_...`를 설정합니다.
 4. `backends/sam3dbody/download_weights.sh weights`를 다시 실행하면 `model.ckpt`, `model_config.yaml`, `assets/mhr_model.pt`가 `weights/sam3dbody/sam-3d-body-dinov3/`에 받아집니다. MoGe-2 파일(`moge-2-vitl-normal/model.pt`)은 공개 파일이라 4.2에서 이미 받아졌습니다.
 
 수동으로 받을 때는 저장소의 **Files** 탭에서 세 파일을 받아 위 구조대로 놓습니다.
@@ -147,6 +150,7 @@ MANO 라이선스에 동의했다면 `backends/wilor/download_weights.sh weights
 **PEAR, WiLoR 체크포인트**
 
 Hugging Face에 공개되어 있어(`BestWJH/PEAR_models`, `warmshao/WiLoR-mini`) 스크립트가 받습니다.
+PEAR 저장소는 공개된 `pear_model.pt`가 논문 최종 모델이 아닌 초기 버전이라고 밝히고 있습니다.
 
 ### 4.4 확인
 
@@ -196,6 +200,16 @@ pafpose run --video input.mp4 --preset speed --out result/ --dry-run
 | `--preview mp4` / `--preview gif` | 영상마다 융합된 3D 골격 애니메이션을 함께 생성 |
 
 같은 백엔드가 여러 파트에 선택되면(예: `accuracy` 프리셋의 SAM 3D Body body+hand) 컨테이너는 한 번만 실행됩니다.
+
+참고 처리 시간 (1080p, 127프레임 영상, 모델 로딩 포함, 단일 GPU):
+
+| 백엔드 | 컨테이너 실행 시간 |
+| --- | --- |
+| `pear` | 약 20초 |
+| `wilor` | 약 11초 |
+| `teaser` | 수십 초 |
+| `sam3dbody` | 약 3분 (프레임당 약 1초) |
+| `mediapipe` | CPU에서 약 8 FPS |
 
 실행 전 점검:
 
@@ -269,6 +283,15 @@ pafpose fuse --body-npz result/clip/pear/clip.npz --hand-npz result/clip/wilor/c
 
 레지스트리: `backends/backends.yaml`. 각 백엔드 폴더의 `README.md`에 어댑터 동작, 가중치 배치, 수동 실행 방법, 제한 사항이 있습니다.
 백엔드 이미지는 `docker compose build`로 빌드하며, 외부 저장소는 Dockerfile 안에서 위 커밋으로 clone 됩니다.
+
+알아둘 점:
+
+- `wilor`는 자체 손 검출기를 쓰므로 손이 작게 나오거나 겹치는 프레임에서는 손을 놓쳐 유효 프레임이 줄 수 있습니다. `sam3dbody`와 `pear`는 몸 전체를 한 번에 추정해 손 커버리지가 높습니다.
+- `mediapipe`는 GPU가 없을 때의 대체용이며 정확도는 다른 백엔드보다 낮습니다.
+- 영상 프레임은 각 컨테이너 안에서 ffmpeg로 디코딩합니다. 일부 OpenCV 빌드가 인터레이스 플래그가 있는 파일을 검은 프레임으로 읽는 문제를 피하기 위한 것입니다.
+
+새 백엔드를 추가하려면 `backends/<이름>/`에 Dockerfile과 `adapter.py`를 만들고(공통 출력 형식은 `backends/_common/pafpose_backend.py` 참조),
+`backends/backends.yaml`에 항목을 추가한 뒤 `docker-compose.yml`에 서비스를 등록하면 됩니다. 호스트 코드는 수정할 필요가 없습니다.
 
 ## 9. 구조
 
