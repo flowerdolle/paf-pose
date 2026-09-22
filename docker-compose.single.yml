@@ -1,7 +1,0 @@
-# All-in-one image (repository-root Dockerfile). Build with:
-#   docker compose -f docker-compose.single.yml build
-# Run through the host CLI with PAFPOSE_REGISTRY=backends/backends-single.yaml.
-services:
-  all:
-    image: pafpose/all:0.1
-    build: { context: ., dockerfile: Dockerfile }

@@ -22,6 +22,6 @@
 ## Open items
 
 - WiLoR's own detector misses hands in about half the frames of the KETI clip (67/127 complete); the paper used SAM 3D Body hand boxes instead. A body-guided crop for WiLoR would raise coverage.
-- The all-in-one image (root Dockerfile) has not been built yet.
+- The all-in-one image was removed on 2026-09-22 (never built; per-backend images are the supported path).
 - Paper fusion-table face-frame issue (PEAR/TEASER face exports not in the body frame); reproducible with tools/repro --face-frame corrected.
 - Copyright holder for registration (personal vs. institution).

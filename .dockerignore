@@ -1,4 +1,4 @@
-# Keep the build context small: only backends/ is needed by the Dockerfiles.
+# Keep the build context small: only backends/ is needed by the per-backend Dockerfiles.
 .git
 .venv
 weights
