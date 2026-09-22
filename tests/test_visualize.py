@@ -35,7 +35,13 @@ def test_render_preview_mp4_and_gif(tmp_path):
     assert int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) == 6
     ok, frame = cap.read()
     cap.release()
-    assert ok and frame.shape[0] == 96 and frame.shape[1] > 96  # skeleton panel + video panel side by side
+    assert ok and frame.shape[:2] == (96, 96)  # skeleton only: square panel
+
+    both = visualize.render_preview(result, None, result / "both.mp4", visualize.RenderOptions(panel_height=96, with_video=True))
+    cap = cv2.VideoCapture(str(both))
+    ok, frame = cap.read()
+    cap.release()
+    assert ok and frame.shape[0] == 96 and frame.shape[1] > 96  # skeleton + video side by side
 
     gif = visualize.render_preview(result, None, result / "preview.gif", visualize.RenderOptions(panel_height=96, stride=2, gif_width=200))
     from PIL import Image
@@ -44,10 +50,11 @@ def test_render_preview_mp4_and_gif(tmp_path):
         assert im.n_frames == 3 and im.size[0] <= 200
 
 
-def test_render_preview_needs_video(tmp_path):
+def test_render_preview_without_video_entry(tmp_path):
     result = _synthetic_result(tmp_path)
     meta = json.loads((result / "fusion.json").read_text())
     del meta["video"]
     (result / "fusion.json").write_text(json.dumps(meta))
+    assert visualize.render_preview(result, None, result / "p.mp4").is_file()  # skeleton-only needs no video
     with pytest.raises(ValueError, match="pass --video"):
-        visualize.render_preview(result, None, result / "p.mp4")
+        visualize.render_preview(result, None, result / "q.mp4", visualize.RenderOptions(with_video=True))

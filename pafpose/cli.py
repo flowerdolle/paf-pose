@@ -139,7 +139,7 @@ def cmd_visualize(args: argparse.Namespace) -> int:
     out_path = Path(args.out) if args.out else result_dir / f"preview.{args.format}"
     options = visualize.RenderOptions(
         elev=args.elev, azim=args.azim, panel_height=args.height, stride=args.stride,
-        max_frames=args.max_frames, fps=args.fps, gif_width=args.gif_width,
+        max_frames=args.max_frames, fps=args.fps, gif_width=args.gif_width, with_video=args.with_video,
     )
     try:
         written = visualize.render_preview(result_dir, Path(args.video) if args.video else None, out_path, options)
@@ -246,7 +246,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--cpu", action="store_true", help="do not pass --gpus all to docker")
     p_run.add_argument("--dry-run", action="store_true", help="print docker commands without running")
     p_run.add_argument("--keep-going", action="store_true", help="continue with other videos after a failure")
-    p_run.add_argument("--preview", choices=("mp4", "gif"), default=None, help="also render a side-by-side preview per video")
+    p_run.add_argument("--preview", choices=("mp4", "gif"), default=None, help="also render a 3D skeleton animation per video")
     p_run.set_defaults(func=cmd_run)
 
     p_fuse = sub.add_parser("fuse", help="fuse existing per-backend outputs without running containers")
@@ -258,9 +258,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_fuse.add_argument("--no-face-scale", action="store_true", help="keep the face's own scale")
     p_fuse.set_defaults(func=cmd_fuse)
 
-    p_vis = sub.add_parser("visualize", help="render a side-by-side preview: 3D skeleton (left) and source video (right)")
+    p_vis = sub.add_parser("visualize", help="render the fused 3D skeleton as an mp4/gif animation")
     p_vis.add_argument("--result", required=True, help="result folder of one video (contains fused.npz)")
-    p_vis.add_argument("--video", default=None, help="source video (default: path recorded in fusion.json)")
+    p_vis.add_argument("--with-video", action="store_true", help="also show the source video on the right")
+    p_vis.add_argument("--video", default=None, help="source video for --with-video (default: path recorded in fusion.json)")
     p_vis.add_argument("--out", default=None, help="output file; default <result>/preview.<format>")
     p_vis.add_argument("--format", choices=("mp4", "gif"), default="mp4")
     p_vis.add_argument("--height", type=int, default=480, help="panel height in pixels")

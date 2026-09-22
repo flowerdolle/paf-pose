@@ -1,6 +1,7 @@
-"""Side-by-side preview: 3D skeleton animation (left) next to the source video (right).
+"""Preview animation of the fused 3D skeleton, optionally next to the source video.
 
 Reads ``fused.npz`` produced by ``pafpose run`` / ``pafpose fuse`` and writes an mp4 or gif.
+By default only the 3D skeleton is rendered; ``with_video`` adds the source frame on the right.
 Rendering uses matplotlib (Agg) on the host; no container is needed.
 """
 
@@ -42,8 +43,9 @@ class RenderOptions:
     stride: int = 1              # render every n-th frame
     max_frames: int | None = None
     fps: float | None = None     # output fps; default = source fps / stride
-    gif_width: int = 800         # total width of the gif (both panels), keeps gifs small
+    gif_width: int = 800         # total width of the gif, keeps gifs small
     title: str = ""
+    with_video: bool = False     # also show the source video frame on the right
 
 
 def load_fused(result_dir: Path) -> tuple[np.ndarray, np.ndarray, dict]:
@@ -170,25 +172,27 @@ def render_preview(
     out_path: Path,
     options: RenderOptions | None = None,
 ) -> Path:
-    """Write an mp4 (or gif when out_path ends with .gif) with the skeleton left and the video right."""
+    """Write an mp4 (or gif when out_path ends with .gif) of the 3D skeleton, plus the video when requested."""
     import cv2
 
     options = options or RenderOptions()
     result_dir = Path(result_dir)
     wb, part_valid, meta = load_fused(result_dir)
-    if video is None:
-        if "video" not in meta:
-            raise ValueError("fusion.json has no 'video' entry; pass --video")
+    if video is None and "video" in meta:
         video = Path(meta["video"])
-    video = Path(video)
-    if not video.is_file():
-        raise FileNotFoundError(f"video not found: {video}")
+    video = Path(video) if video is not None else None
+    if options.with_video:
+        if video is None:
+            raise ValueError("fusion.json has no 'video' entry; pass --video to use --with-video")
+        if not video.is_file():
+            raise FileNotFoundError(f"video not found: {video}")
 
-    src_fps = video_fps(video)
+    src_fps = video_fps(video) if video is not None and video.is_file() else 30.0
     out_fps = options.fps or (src_fps / options.stride)
     sel = meta.get("selection", {})
+    name = video.stem if video is not None else result_dir.name
     title = options.title or "{}\nbody {} | hand {} | face {}".format(
-        video.stem[:40], *(sel.get(k, "?") for k in ("body", "hand", "face"))
+        name[:40], *(sel.get(k, "?") for k in ("body", "hand", "face"))
     )
     renderer = SkeletonRenderer(wb, part_valid, options)
     frames: list[np.ndarray] = []
@@ -197,8 +201,12 @@ def render_preview(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     as_gif = out_path.suffix.lower() == ".gif"
     rendered = 0
+    if options.with_video:
+        source: Iterator[tuple[int, np.ndarray | None]] = enumerate(iter_video_frames(video))  # type: ignore[arg-type]
+    else:
+        source = ((i, None) for i in range(wb.shape[0]))
     try:
-        for index, frame in enumerate(iter_video_frames(video)):
+        for index, frame in source:
             if index >= wb.shape[0]:
                 break
             if index % options.stride:
@@ -206,8 +214,9 @@ def render_preview(
             if options.max_frames is not None and rendered >= options.max_frames:
                 break
             status = "".join("BLRF"[i] if part_valid[index, i] else "-" for i in range(4))
-            left = renderer.render(wb[index], part_valid[index], f"{title}\nframe {index}   valid {status}")
-            panel = compose(left, frame, options.panel_height)
+            panel = renderer.render(wb[index], part_valid[index], f"{title}\nframe {index}   valid {status}")
+            if frame is not None:
+                panel = compose(panel, frame, options.panel_height)
             if as_gif:
                 if panel.shape[1] > options.gif_width:
                     scale = options.gif_width / panel.shape[1]

@@ -218,7 +218,7 @@ pafpose run --video input.mp4 --preset speed --out result/ --dry-run
 | `--cpu` | 컨테이너에 GPU를 넘기지 않음 (mediapipe 전용 실행에 사용) |
 | `--dry-run` | docker 명령만 출력 |
 | `--keep-going` | 한 백엔드가 실패해도 나머지 영상을 계속 처리 |
-| `--preview mp4` / `--preview gif` | 영상마다 3D 골격(왼쪽)과 원본 영상(오른쪽)을 나란히 그린 미리보기를 함께 생성 |
+| `--preview mp4` / `--preview gif` | 영상마다 융합된 3D 골격 애니메이션을 함께 생성 |
 
 같은 백엔드가 여러 파트에 선택되면(예: `accuracy` 프리셋의 SAM 3D Body body+hand) 컨테이너는 한 번만 실행됩니다.
 
@@ -248,7 +248,7 @@ docker, NVIDIA 런타임, 백엔드 이미지, 가중치 폴더, 레지스트리
 ├── selection.json                   사용한 body/hand/face 백엔드
 ├── fused.npz                        융합 결과
 ├── fusion.json                      프레임 통계, 부착 스케일, 설정
-└── preview.mp4 / preview.gif        미리보기 (--preview 또는 pafpose visualize 로 생성)
+└── preview.mp4 / preview.gif        3D 골격 애니메이션 (--preview 또는 pafpose visualize 로 생성)
 ```
 
 `fused.npz` 키:
@@ -267,12 +267,13 @@ docker, NVIDIA 런타임, 백엔드 이미지, 가중치 폴더, 레지스트리
 
 백엔드가 쓰는 공통 npz 키(`body8_eye2_xyz`, `hands42_xyz`, `face70_xyz`, `*_valid`)와 `meta.json` 필드는 `pafpose/schema.py`에 정의되어 있습니다.
 
-융합 결과를 눈으로 확인하려면 미리보기를 만듭니다. 왼쪽에 3D 골격 애니메이션, 오른쪽에 원본 영상이 나란히 놓입니다.
+융합 결과를 눈으로 확인하려면 3D 골격 애니메이션을 만듭니다. 몸은 파란색, 왼손 녹색, 오른손 빨간색, 얼굴 주황색으로 그려집니다.
 
 ```bash
 pafpose visualize --result result/clip                       # result/clip/preview.mp4
 pafpose visualize --result result/clip --format gif --stride 3 --gif-width 640
 pafpose visualize --result result/clip --azim -60 --elev 20  # 시점 변경
+pafpose visualize --result result/clip --with-video          # 오른쪽에 원본 영상을 나란히 표시
 ```
 
 컨테이너를 다시 돌리지 않고 기존 결과만 융합하려면:
