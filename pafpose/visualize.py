@@ -1,7 +1,6 @@
-"""Preview animation of the fused 3D skeleton, optionally next to the source video.
+"""Preview animation of the fused 3D skeleton.
 
 Reads ``fused.npz`` produced by ``pafpose run`` / ``pafpose fuse`` and writes an mp4 or gif.
-By default only the 3D skeleton is rendered; ``with_video`` adds the source frame on the right.
 Rendering uses matplotlib (Agg) on the host; no container is needed.
 """
 
@@ -10,8 +9,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
-
 import numpy as np
 
 from .fusion import BODY8_EDGES, HAND21_EDGES
@@ -38,14 +35,13 @@ COLORS = {"body": "#1f77b4", "left": "#2ca02c", "right": "#d62728", "face": "#ff
 class RenderOptions:
     elev: float = 10.0
     azim: float = -90.0          # camera in front of the person (looking along +y, the depth axis)
-    panel_height: int = 480      # pixels; the video is resized to this height
+    panel_height: int = 480      # pixels; the rendered panel is square
     dpi: int = 100
     stride: int = 1              # render every n-th frame
     max_frames: int | None = None
     fps: float | None = None     # output fps; default = source fps / stride
-    gif_width: int = 800         # total width of the gif, keeps gifs small
+    gif_width: int = 480         # width of the gif, keeps gifs small
     title: str = ""
-    with_video: bool = False     # also show the source video frame on the right
 
 
 def load_fused(result_dir: Path) -> tuple[np.ndarray, np.ndarray, dict]:
@@ -133,64 +129,29 @@ class SkeletonRenderer:
         return np.ascontiguousarray(rgb)
 
 
-def iter_video_frames(video: Path) -> Iterator[np.ndarray]:
-    import cv2
-
-    cap = cv2.VideoCapture(str(video))
+def source_fps(meta: dict) -> float:
+    """fps recorded by the backends (meta.json) via fusion.json, else 30."""
+    fps = meta.get("fps_source")
     try:
-        while True:
-            ok, frame = cap.read()
-            if not ok:
-                return
-            yield frame[..., ::-1]  # BGR -> RGB
-    finally:
-        cap.release()
-
-
-def video_fps(video: Path) -> float:
-    import cv2
-
-    cap = cv2.VideoCapture(str(video))
-    fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
-    cap.release()
-    return fps or 30.0
-
-
-def compose(left: np.ndarray, right: np.ndarray, height: int) -> np.ndarray:
-    import cv2
-
-    def fit(img: np.ndarray) -> np.ndarray:
-        h, w = img.shape[:2]
-        return cv2.resize(img, (max(1, int(round(w * height / h))), height), interpolation=cv2.INTER_AREA)
-
-    return np.concatenate([fit(left), fit(right)], axis=1)
+        return float(fps) if fps else 30.0
+    except (TypeError, ValueError):
+        return 30.0
 
 
 def render_preview(
     result_dir: Path,
-    video: Path | None,
     out_path: Path,
     options: RenderOptions | None = None,
 ) -> Path:
-    """Write an mp4 (or gif when out_path ends with .gif) of the 3D skeleton, plus the video when requested."""
+    """Write an mp4 (or gif when out_path ends with .gif) of the fused 3D skeleton."""
     import cv2
 
     options = options or RenderOptions()
     result_dir = Path(result_dir)
     wb, part_valid, meta = load_fused(result_dir)
-    if video is None and "video" in meta:
-        video = Path(meta["video"])
-    video = Path(video) if video is not None else None
-    if options.with_video:
-        if video is None:
-            raise ValueError("fusion.json has no 'video' entry; pass --video to use --with-video")
-        if not video.is_file():
-            raise FileNotFoundError(f"video not found: {video}")
-
-    src_fps = video_fps(video) if video is not None and video.is_file() else 30.0
-    out_fps = options.fps or (src_fps / options.stride)
+    out_fps = options.fps or (source_fps(meta) / options.stride)
     sel = meta.get("selection", {})
-    name = video.stem if video is not None else result_dir.name
+    name = Path(meta["video"]).stem if meta.get("video") else result_dir.name
     title = options.title or "{}\nbody {} | hand {} | face {}".format(
         name[:40], *(sel.get(k, "?") for k in ("body", "hand", "face"))
     )
@@ -201,22 +162,12 @@ def render_preview(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     as_gif = out_path.suffix.lower() == ".gif"
     rendered = 0
-    if options.with_video:
-        source: Iterator[tuple[int, np.ndarray | None]] = enumerate(iter_video_frames(video))  # type: ignore[arg-type]
-    else:
-        source = ((i, None) for i in range(wb.shape[0]))
     try:
-        for index, frame in source:
-            if index >= wb.shape[0]:
-                break
-            if index % options.stride:
-                continue
+        for index in range(0, wb.shape[0], options.stride):
             if options.max_frames is not None and rendered >= options.max_frames:
                 break
             status = "".join("BLRF"[i] if part_valid[index, i] else "-" for i in range(4))
             panel = renderer.render(wb[index], part_valid[index], f"{title}\nframe {index}   valid {status}")
-            if frame is not None:
-                panel = compose(panel, frame, options.panel_height)
             if as_gif:
                 if panel.shape[1] > options.gif_width:
                     scale = options.gif_width / panel.shape[1]
@@ -232,7 +183,7 @@ def render_preview(
         if writer is not None:
             writer.release()
     if rendered == 0:
-        raise ValueError("no frames rendered (empty video or fused.npz)")
+        raise ValueError("no frames rendered (empty fused.npz)")
     if as_gif:
         from PIL import Image
 

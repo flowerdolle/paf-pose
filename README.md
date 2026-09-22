@@ -273,7 +273,6 @@ docker, NVIDIA 런타임, 백엔드 이미지, 가중치 폴더, 레지스트리
 pafpose visualize --result result/clip                       # result/clip/preview.mp4
 pafpose visualize --result result/clip --format gif --stride 3 --gif-width 640
 pafpose visualize --result result/clip --azim -60 --elev 20  # 시점 변경
-pafpose visualize --result result/clip --with-video          # 오른쪽에 원본 영상을 나란히 표시
 ```
 
 컨테이너를 다시 돌리지 않고 기존 결과만 융합하려면:

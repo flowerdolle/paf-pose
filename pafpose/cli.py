@@ -84,10 +84,17 @@ def cmd_run(args: argparse.Namespace) -> int:
             fused = fusion.fuse_outputs(
                 body=outputs[selection.body], hand=outputs[selection.hand], face=outputs[selection.face]
             )
-            npz_path, _ = fused.save(video_out, extra_meta={"selection": selection.as_dict(), "video": str(video.resolve())})
+            npz_path, _ = fused.save(
+                video_out,
+                extra_meta={
+                    "selection": selection.as_dict(),
+                    "video": str(video.resolve()),
+                    "fps_source": outputs[selection.body].meta.get("fps_source"),
+                },
+            )
             print(f"  fused: {npz_path}  complete frames {int(fused.valid.sum())}/{fused.num_frames}")
             if args.preview:
-                preview = visualize.render_preview(video_out, video, video_out / f"preview.{args.preview}")
+                preview = visualize.render_preview(video_out, video_out / f"preview.{args.preview}")
                 print(f"  preview: {preview}")
 
     return 1 if failures else 0
@@ -139,10 +146,10 @@ def cmd_visualize(args: argparse.Namespace) -> int:
     out_path = Path(args.out) if args.out else result_dir / f"preview.{args.format}"
     options = visualize.RenderOptions(
         elev=args.elev, azim=args.azim, panel_height=args.height, stride=args.stride,
-        max_frames=args.max_frames, fps=args.fps, gif_width=args.gif_width, with_video=args.with_video,
+        max_frames=args.max_frames, fps=args.fps, gif_width=args.gif_width,
     )
     try:
-        written = visualize.render_preview(result_dir, Path(args.video) if args.video else None, out_path, options)
+        written = visualize.render_preview(result_dir, out_path, options)
     except (OSError, ValueError, KeyError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -260,15 +267,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_vis = sub.add_parser("visualize", help="render the fused 3D skeleton as an mp4/gif animation")
     p_vis.add_argument("--result", required=True, help="result folder of one video (contains fused.npz)")
-    p_vis.add_argument("--with-video", action="store_true", help="also show the source video on the right")
-    p_vis.add_argument("--video", default=None, help="source video for --with-video (default: path recorded in fusion.json)")
     p_vis.add_argument("--out", default=None, help="output file; default <result>/preview.<format>")
     p_vis.add_argument("--format", choices=("mp4", "gif"), default="mp4")
     p_vis.add_argument("--height", type=int, default=480, help="panel height in pixels")
     p_vis.add_argument("--stride", type=int, default=1, help="render every n-th frame")
     p_vis.add_argument("--max-frames", type=int, default=None)
-    p_vis.add_argument("--fps", type=float, default=None, help="output fps (default: source fps / stride)")
-    p_vis.add_argument("--gif-width", type=int, default=800, help="total gif width in pixels")
+    p_vis.add_argument("--fps", type=float, default=None, help="output fps (default: source video fps / stride)")
+    p_vis.add_argument("--gif-width", type=int, default=480, help="gif width in pixels")
     p_vis.add_argument("--elev", type=float, default=10.0, help="3D view elevation")
     p_vis.add_argument("--azim", type=float, default=-90.0, help="3D view azimuth (-90 = frontal)")
     p_vis.set_defaults(func=cmd_visualize)
