@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import __version__, fusion, registry as reg, runner, schema
+from . import __version__, fusion, registry as reg, runner, schema, visualize
 from .schema import PARTS
 
 
@@ -83,8 +83,11 @@ def cmd_run(args: argparse.Namespace) -> int:
             fused = fusion.fuse_outputs(
                 body=outputs[selection.body], hand=outputs[selection.hand], face=outputs[selection.face]
             )
-            npz_path, _ = fused.save(video_out, extra_meta={"selection": selection.as_dict(), "video": str(video)})
+            npz_path, _ = fused.save(video_out, extra_meta={"selection": selection.as_dict(), "video": str(video.resolve())})
             print(f"  fused: {npz_path}  complete frames {int(fused.valid.sum())}/{fused.num_frames}")
+            if args.preview:
+                preview = visualize.render_preview(video_out, video, video_out / f"preview.{args.preview}")
+                print(f"  preview: {preview}")
 
     return 1 if failures else 0
 
@@ -124,6 +127,25 @@ def cmd_fuse(args: argparse.Namespace) -> int:
           f"(body {int(fused.body_valid.sum())}, left {int(fused.left_valid.sum())}, "
           f"right {int(fused.right_valid.sum())}, face {int(fused.face_valid.sum())})")
     print(f"scales: {fused.scales}")
+    return 0
+
+
+# --------------------------------------------------------------------------- visualize
+
+
+def cmd_visualize(args: argparse.Namespace) -> int:
+    result_dir = Path(args.result)
+    out_path = Path(args.out) if args.out else result_dir / f"preview.{args.format}"
+    options = visualize.RenderOptions(
+        elev=args.elev, azim=args.azim, panel_height=args.height, stride=args.stride,
+        max_frames=args.max_frames, fps=args.fps, gif_width=args.gif_width,
+    )
+    try:
+        written = visualize.render_preview(result_dir, Path(args.video) if args.video else None, out_path, options)
+    except (OSError, ValueError, KeyError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(f"preview: {written}")
     return 0
 
 
@@ -223,6 +245,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--cpu", action="store_true", help="do not pass --gpus all to docker")
     p_run.add_argument("--dry-run", action="store_true", help="print docker commands without running")
     p_run.add_argument("--keep-going", action="store_true", help="continue with other videos after a failure")
+    p_run.add_argument("--preview", choices=("mp4", "gif"), default=None, help="also render a side-by-side preview per video")
     p_run.set_defaults(func=cmd_run)
 
     p_fuse = sub.add_parser("fuse", help="fuse existing per-backend outputs without running containers")
@@ -233,6 +256,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_fuse.add_argument("--no-hand-scale", action="store_true", help="keep each hand's own scale")
     p_fuse.add_argument("--no-face-scale", action="store_true", help="keep the face's own scale")
     p_fuse.set_defaults(func=cmd_fuse)
+
+    p_vis = sub.add_parser("visualize", help="render a side-by-side preview: 3D skeleton (left) and source video (right)")
+    p_vis.add_argument("--result", required=True, help="result folder of one video (contains fused.npz)")
+    p_vis.add_argument("--video", default=None, help="source video (default: path recorded in fusion.json)")
+    p_vis.add_argument("--out", default=None, help="output file; default <result>/preview.<format>")
+    p_vis.add_argument("--format", choices=("mp4", "gif"), default="mp4")
+    p_vis.add_argument("--height", type=int, default=480, help="panel height in pixels")
+    p_vis.add_argument("--stride", type=int, default=1, help="render every n-th frame")
+    p_vis.add_argument("--max-frames", type=int, default=None)
+    p_vis.add_argument("--fps", type=float, default=None, help="output fps (default: source fps / stride)")
+    p_vis.add_argument("--gif-width", type=int, default=800, help="total gif width in pixels")
+    p_vis.add_argument("--elev", type=float, default=10.0, help="3D view elevation")
+    p_vis.add_argument("--azim", type=float, default=-90.0, help="3D view azimuth (-90 = frontal)")
+    p_vis.set_defaults(func=cmd_visualize)
 
     p_doc = sub.add_parser("doctor", help="check docker, GPU, images, weights, registry, presets")
     p_doc.add_argument("--weights", default=None)
